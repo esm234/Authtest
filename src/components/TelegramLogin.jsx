@@ -24,7 +24,7 @@ const TelegramLogin = ({ onLoginSuccess }) => {
     // إضافة سكريبت Telegram Login Widget
     const script = document.createElement('script');
     script.src = 'https://telegram.org/js/telegram-widget.js?22';
-    script.setAttribute('data-telegram-login', 'YOUR_BOT_USERNAME'); // يجب استبدال هذا باسم البوت الخاص بك
+    script.setAttribute('data-telegram-login', 'Ourgoalauthbot'); // يجب استبدال هذا باسم البوت الخاص بك
     script.setAttribute('data-size', 'large');
     script.setAttribute('data-auth-url', window.location.origin + '/telegram-auth');
     script.setAttribute('data-request-access', 'write');
@@ -134,7 +134,7 @@ const TelegramLogin = ({ onLoginSuccess }) => {
               للحصول على تفعيل حسابك، يرجى التواصل مع فريق الدعم:
             </p>
             <a 
-              href="https://t.me/YOUR_SUPPORT_BOT" 
+              Ourgoalauthbot 
               target="_blank" 
               rel="noopener noreferrer"
               className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
