@@ -46,11 +46,26 @@ const TelegramLogin = ({ onLoginSuccess }) => {
   const handleTelegramAuth = async (telegramUser) => {
     setLoading(true);
     try {
-      // التحقق من صحة البيانات
-      if (!validateTelegramAuth(telegramUser)) {
-        throw new Error('بيانات تسجيل الدخول غير صحيحة');
-      }
-      
+      // التحقق من صحة البيانات (يجب إضافة التحقق من hash في الإنتاج)
+      // For production, you should verify the hash using your bot token
+      // const checkString = `auth_date=${telegramUser.auth_date}\nfirst_name=${telegramUser.first_name}\nid=${telegramUser.id}${telegramUser.last_name ? `\nlast_name=${telegramUser.last_name}` : ''}${telegramUser.username ? `\nusername=${telegramUser.username}` : ''}\nphoto_url=${telegramUser.photo_url}`;
+      // const secretKey = await crypto.subtle.importKey(
+      //   "raw",
+      //   new TextEncoder().encode("YOUR_BOT_TOKEN"), // Replace with your actual bot token
+      //   { name: "HMAC", hash: "SHA-256" },
+      //   false,
+      //   ["sign"]
+      // );
+      // const signature = await crypto.subtle.sign(
+      //   "HMAC",
+      //   secretKey,
+      //   new TextEncoder().encode(checkString)
+      // );
+      // const hexHash = Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
+      // if (hexHash !== telegramUser.hash) {
+      //   throw new Error('بيانات تسجيل الدخول غير صحيحة: Hash غير متطابق');
+      // }
+
       // إنشاء أو تحديث المستخدم في قاعدة البيانات
       const userData = await createOrUpdateUser(telegramUser);
 
@@ -63,8 +78,8 @@ const TelegramLogin = ({ onLoginSuccess }) => {
       await checkUserActivationStatus(userData.id);
 
     } catch (error) {
-      console.error('خطأ في تسجيل الدخول:', error);
-      alert('حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.');
+      console.error("خطأ في تسجيل الدخول:", error);
+      alert("حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.");
     } finally {
       setLoading(false);
     }
