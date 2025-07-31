@@ -23,6 +23,8 @@ export const validateTelegramAuth = (telegramData) => {
  */
 export const createOrUpdateUser = async (telegramUser) => {
   try {
+    console.log('Creating/updating user:', telegramUser);
+    
     // البحث عن المستخدم الموجود
     const { data: existingUser, error: fetchError } = await supabase
       .from('users')
@@ -31,25 +33,30 @@ export const createOrUpdateUser = async (telegramUser) => {
       .single();
 
     let userId;
+    let isNewUser = false;
     
     if (fetchError && fetchError.code === 'PGRST116') {
       // المستخدم غير موجود، إنشاء مستخدم جديد
+      console.log('Creating new user...');
       const { data: newUser, error: insertError } = await supabase
         .from('users')
         .insert([
           {
             telegram_id: telegramUser.id,
-            username: telegramUser.username || telegramUser.first_name
+            username: telegramUser.username || telegramUser.first_name || `user_${telegramUser.id}`
           }
         ])
         .select()
         .single();
 
       if (insertError) {
+        console.error('Error creating user:', insertError);
         throw new Error(`خطأ في إنشاء المستخدم: ${insertError.message}`);
       }
 
+      console.log('New user created:', newUser);
       userId = newUser.id;
+      isNewUser = true;
 
       // إنشاء سجل تفعيل للمستخدم الجديد
       const { error: activationError } = await supabase
@@ -62,18 +69,23 @@ export const createOrUpdateUser = async (telegramUser) => {
         ]);
 
       if (activationError) {
+        console.error('Error creating activation record:', activationError);
         throw new Error(`خطأ في إنشاء سجل التفعيل: ${activationError.message}`);
       }
 
+      console.log('Activation record created for user:', userId);
+
       return { ...newUser, isNewUser: true };
     } else if (fetchError) {
+      console.error('Error fetching user:', fetchError);
       throw new Error(`خطأ في جلب بيانات المستخدم: ${fetchError.message}`);
     } else {
       // المستخدم موجود، تحديث آخر نشاط
+      console.log('Updating existing user:', existingUser.id);
       const { data: updatedUser, error: updateError } = await supabase
         .from('users')
         .update({ 
-          username: telegramUser.username || telegramUser.first_name,
+          username: telegramUser.username || telegramUser.first_name || existingUser.username,
           last_login: new Date().toISOString()
         })
         .eq('id', existingUser.id)
@@ -81,6 +93,7 @@ export const createOrUpdateUser = async (telegramUser) => {
         .single();
 
       if (updateError) {
+        console.error('Error updating user:', updateError);
         throw new Error(`خطأ في تحديث بيانات المستخدم: ${updateError.message}`);
       }
 

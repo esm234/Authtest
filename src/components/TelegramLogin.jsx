@@ -12,11 +12,13 @@ const TelegramLogin = ({ onLoginSuccess }) => {
   const [user, setUser] = useState(null);
   const [isActivated, setIsActivated] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checkingActivation, setCheckingActivation] = useState(false);
 
   useEffect(() => {
     // تحقق من وجود بيانات المستخدم في localStorage
     const savedUser = getUserFromLocalStorage();
     if (savedUser) {
+      console.log('Found saved user:', savedUser);
       setUser(savedUser);
       checkUserActivationStatus(savedUser.id);
     }
@@ -24,7 +26,7 @@ const TelegramLogin = ({ onLoginSuccess }) => {
     // إضافة سكريبت Telegram Login Widget
     const script = document.createElement('script');
     script.src = 'https://telegram.org/js/telegram-widget.js?22';
-    script.setAttribute('data-telegram-login', 'Ourgoalauthbot'); // يجب استبدال هذا باسم البوت الخاص بك
+    script.setAttribute('data-telegram-login', 'Ourgoalauthbot'); // اسم البوت
     script.setAttribute('data-size', 'large');
     script.setAttribute('data-auth-url', window.location.origin + '/telegram-auth');
     script.setAttribute('data-request-access', 'write');
@@ -44,33 +46,19 @@ const TelegramLogin = ({ onLoginSuccess }) => {
   }, [user]);
 
   const handleTelegramAuth = async (telegramUser) => {
+    console.log('Telegram auth received:', telegramUser);
     setLoading(true);
     try {
-      // التحقق من صحة البيانات (يجب إضافة التحقق من hash في الإنتاج)
-      // For production, you should verify the hash using your bot token
-      // const checkString = `auth_date=${telegramUser.auth_date}\nfirst_name=${telegramUser.first_name}\nid=${telegramUser.id}${telegramUser.last_name ? `\nlast_name=${telegramUser.last_name}` : ''}${telegramUser.username ? `\nusername=${telegramUser.username}` : ''}\nphoto_url=${telegramUser.photo_url}`;
-      // const secretKey = await crypto.subtle.importKey(
-      //   "raw",
-      //   new TextEncoder().encode("YOUR_BOT_TOKEN"), // Replace with your actual bot token
-      //   { name: "HMAC", hash: "SHA-256" },
-      //   false,
-      //   ["sign"]
-      // );
-      // const signature = await crypto.subtle.sign(
-      //   "HMAC",
-      //   secretKey,
-      //   new TextEncoder().encode(checkString)
-      // );
-      // const hexHash = Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
-      // if (hexHash !== telegramUser.hash) {
-      //   throw new Error('بيانات تسجيل الدخول غير صحيحة: Hash غير متطابق');
-      // }
-
       // إنشاء أو تحديث المستخدم في قاعدة البيانات
       const userData = await createOrUpdateUser(telegramUser);
+      console.log('User data from database:', userData);
 
       // حفظ بيانات المستخدم محلياً
-      const userToSave = { ...telegramUser, id: userData.id };
+      const userToSave = { 
+        ...telegramUser, 
+        id: userData.id,
+        database_id: userData.id 
+      };
       saveUserToLocalStorage(userToSave);
       setUser(userToSave);
 
@@ -86,20 +74,34 @@ const TelegramLogin = ({ onLoginSuccess }) => {
   };
 
   const checkUserActivationStatus = async (userId) => {
+    console.log('Checking activation status for user:', userId);
+    setCheckingActivation(true);
     try {
       const isActive = await checkUserActivation(userId);
+      console.log('User activation status:', isActive);
       setIsActivated(isActive);
       
       if (isActive && onLoginSuccess) {
+        console.log('User is activated, calling onLoginSuccess');
         onLoginSuccess();
       }
     } catch (error) {
       console.error('خطأ في التحقق من التفعيل:', error);
+    } finally {
+      setCheckingActivation(false);
     }
   };
 
   const handleLogout = () => {
     logout();
+    setUser(null);
+    setIsActivated(false);
+  };
+
+  const handleRefreshActivation = async () => {
+    if (user && user.id) {
+      await checkUserActivationStatus(user.id);
+    }
   };
 
   if (loading) {
@@ -127,6 +129,9 @@ const TelegramLogin = ({ onLoginSuccess }) => {
             <p className="text-gray-600 mb-6">
               مرحباً {user.first_name}! تم تسجيل دخولك بنجاح، لكن حسابك غير مفعل حالياً.
             </p>
+            <p className="text-sm text-gray-500 mb-4">
+              معرف المستخدم: {user.id}
+            </p>
           </div>
           
           <div className="bg-blue-50 rounded-lg p-4 mb-6">
@@ -134,7 +139,7 @@ const TelegramLogin = ({ onLoginSuccess }) => {
               للحصول على تفعيل حسابك، يرجى التواصل مع فريق الدعم:
             </p>
             <a 
-              Ourgoalauthbot 
+              href="https://t.me/Ourgoalauthbot" 
               target="_blank" 
               rel="noopener noreferrer"
               className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -146,12 +151,21 @@ const TelegramLogin = ({ onLoginSuccess }) => {
             </a>
           </div>
 
-          <button
-            onClick={handleLogout}
-            className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            تسجيل خروج
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleRefreshActivation}
+              disabled={checkingActivation}
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+            >
+              {checkingActivation ? 'جاري التحقق...' : 'تحديث حالة التفعيل'}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              تسجيل خروج
+            </button>
+          </div>
         </div>
       </div>
     );
